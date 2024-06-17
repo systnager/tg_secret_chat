@@ -118,8 +118,9 @@ class BotConfig:
                 users_list = self.database.get_users_by_room_code(user[3])
                 users_list.remove(user)
                 for user_ in users_list:
-                    await self.bot.send_message(user_[0], f'Хтось: {message.text}',
-                                                reply_markup=self.home_builder.as_markup())
+                    await self.bot.send_message(user_[0], f'||Хтось: {message.text}||',
+                                                reply_markup=self.home_builder.as_markup(),
+                                                parse_mode=ParseMode.MARKDOWN_V2)
         else:
             await self.bot.send_message(message.from_user.id, 'Потрібно пройти реєстрацію. Натисніть /start')
 
