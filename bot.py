@@ -155,7 +155,8 @@ class BotConfig:
                 users_list = self.database.get_users_by_room_code(user[3])
                 users_list.remove(user)
                 if message.content_type == 'photo':
-                    for file_id in message.photo:
+                    for photo in message.photo:
+                        file_id = photo.file_id
                         for user_ in users_list:
                             await self.bot.send_photo(user_[0], file_id)
                 elif message.content_type == 'video':
@@ -189,6 +190,10 @@ class BotConfig:
                 else:
                     await message.reply('Невідомий тип файлу')
                     await message.reply(f'Тип данних: {message.content_type}')
+
+            await self.bot.set_message_reaction(message.chat.id,
+                                                message.message_id,
+                                                reaction=[{"type": "emoji", "emoji": "👍"}])
         else:
             await self.bot.send_message(message.from_user.id, 'Потрібно пройти реєстрацію. Натисніть /start')
 
@@ -196,7 +201,8 @@ class BotConfig:
         user_id = message.from_user.id
         user = self.database.get_user(user_id)
         await self.bot.send_message(user_id, f'Цей текст чисто для того аби ти розумів, що бот працює. '
-                                    f'Щоб змінити кімнату введи /change_room_code', reply_markup=ReplyKeyboardRemove())
+                                             f'Щоб змінити кімнату введи /change_room_code',
+                                    reply_markup=ReplyKeyboardRemove())
         if user:
             await self.bot.send_message(user_id, f'Ти вже зареєстрований. Введи /change_room_code щоб змінить '
                                                  f'кімнату або ж просто пиши повідомлення якщо ти вже в кімнаті')
