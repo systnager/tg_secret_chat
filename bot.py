@@ -1,4 +1,4 @@
-from aiogram import Bot, Dispatcher, Router
+from aiogram import Bot, Dispatcher, Router, types
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
 from aiogram.types import KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
@@ -11,6 +11,43 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 IS_DEBUG = True if os.getenv('IS_DEBUG') == "True" else False
 AUTHENTICATION_TOKEN = os.getenv('DEBUG_AUTHENTICATION_TOKEN') if IS_DEBUG else os.getenv('AUTHENTICATION_TOKEN')
+room_code_blacklist = [None, 'None', 'none', '', 'NULL', 'null']
+
+
+def escape_markdown(text):
+    # Escape special characters for Markdown V2
+    escape_table = {
+        '_': r'\_',
+        '*': r'\*',
+        '[': r'\[',
+        ']': r'\]',
+        '(': r'\(',
+        ')': r'\)',
+        '~': r'\~',
+        '`': r'\`',
+        '>': r'\>',
+        '#': r'\#',
+        '+': r'\+',
+        '-': r'\-',
+        '=': r'\=',
+        '|': r'\|',
+        '{': r'\{',
+        '}': r'\}',
+        '.': r'\.',
+        '!': r'\!'
+    }
+
+    # Replace special characters with their escaped counterparts
+    escaped_text = ""
+    if not text:
+        return escaped_text
+    for char in text:
+        if char in escape_table:
+            escaped_text += escape_table[char]
+        else:
+            escaped_text += char
+
+    return escaped_text
 
 
 class BotConfig:
@@ -112,14 +149,46 @@ class BotConfig:
                     await admin_action[message.text]()
                 elif user[1] in admin_action:
                     await admin_action[user[1]]()
-            elif not user[3] in [None, 'None', 'none', '', 'NULL', 'null']:
+            elif user[3] in room_code_blacklist:
+                await self.bot.send_message(message.chat.id, f'Чудік, введи нормальний код кімнати')
+            elif not user[3] in room_code_blacklist:
                 users_list = self.database.get_users_by_room_code(user[3])
                 users_list.remove(user)
-                for user_ in users_list:
-                    await self.bot.send_message(user_[0], f'||Хтось: {message.text}||',
-                                                parse_mode=ParseMode.MARKDOWN_V2)
-            elif user[3] in [None, 'None', 'none', '', 'NULL', 'null']:
-                await self.bot.send_message(message.chat.id, f'Чудік, введи нормальний код кімнати')
+                if message.content_type == 'photo':
+                    for file_id in message.photo:
+                        for user_ in users_list:
+                            await self.bot.send_photo(user_[0], file_id)
+                elif message.content_type == 'video':
+                    file_id = message.video.file_id
+                    for user_ in users_list:
+                        await self.bot.send_video(user_[0], file_id)
+                elif message.content_type == 'audio':
+                    file_id = message.audio.file_id
+                    for user_ in users_list:
+                        await self.bot.send_audio(user_[0], file_id)
+                elif message.content_type == 'voice':
+                    file_id = message.voice.file_id
+                    for user_ in users_list:
+                        await self.bot.send_audio(user_[0], file_id)
+                elif message.content_type == 'sticker':
+                    file_id = message.sticker.file_id
+                    for user_ in users_list:
+                        await self.bot.send_sticker(user_[0], file_id)
+                elif message.content_type == 'animation':
+                    file_id = message.animation.file_id
+                    for user_ in users_list:
+                        await self.bot.send_animation(user_[0], file_id)
+                elif message.content_type == 'document':
+                    file_id = message.document.file_id
+                    for user_ in users_list:
+                        await self.bot.send_document(user_[0], file_id)
+                elif message.content_type == 'text':
+                    for user_ in users_list:
+                        await self.bot.send_message(user_[0], f'||Хтось: {escape_markdown(message.text)}||',
+                                                    parse_mode=ParseMode.MARKDOWN_V2)
+                else:
+                    await message.reply('Невідомий тип файлу')
+                    await message.reply(f'Тип данних: {message.content_type}')
         else:
             await self.bot.send_message(message.from_user.id, 'Потрібно пройти реєстрацію. Натисніть /start')
 
