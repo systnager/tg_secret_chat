@@ -1,7 +1,7 @@
 from aiogram import Bot, Dispatcher, Router
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
-from aiogram.types import KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 import logging
 
@@ -15,7 +15,6 @@ AUTHENTICATION_TOKEN = os.getenv('DEBUG_AUTHENTICATION_TOKEN') if IS_DEBUG else 
 
 class BotConfig:
     home_button = KeyboardButton(text='Головна')
-    change_room_code_button = KeyboardButton(text='Змінити код кімнати')
 
     week_days_button_list = [
         [InlineKeyboardButton(text="Понеділок", callback_data="monday")],
@@ -50,7 +49,6 @@ class BotConfig:
     )
 
     home_builder.row(
-        change_room_code_button,
     )
 
     def __init__(self, database):
@@ -93,7 +91,7 @@ class BotConfig:
 
         user_action = {
             # 'Головна': lambda: self.change_gr(message),
-            'Змінити код кімнати': lambda: self.change_room_code(message),
+            '/change_room_code': lambda: self.change_room_code(message),
             'change_room_code': lambda: self.change_room_code_state(message),
         }
 
@@ -114,45 +112,49 @@ class BotConfig:
                     await admin_action[message.text]()
                 elif user[1] in admin_action:
                     await admin_action[user[1]]()
-            elif not user[3] in [None, '', 'NULL', 'null']:
+            elif not user[3] in [None, 'None', 'none', '', 'NULL', 'null']:
                 users_list = self.database.get_users_by_room_code(user[3])
                 users_list.remove(user)
                 for user_ in users_list:
                     await self.bot.send_message(user_[0], f'||Хтось: {message.text}||',
-                                                reply_markup=self.home_builder.as_markup(),
                                                 parse_mode=ParseMode.MARKDOWN_V2)
+            elif user[3] in [None, 'None', 'none', '', 'NULL', 'null']:
+                await self.bot.send_message(message.chat.id, f'Чудік, введи нормальний код кімнати')
         else:
             await self.bot.send_message(message.from_user.id, 'Потрібно пройти реєстрацію. Натисніть /start')
 
     async def _command_start_handle(self, message):
         user_id = message.from_user.id
         user = self.database.get_user(user_id)
-        await self.bot.send_message(user_id,
-                                    f'Цей текст чисто для того аби ти розумів, що бот працює',
-                                    reply_markup=self.home_builder.as_markup())
+        await self.bot.send_message(user_id, f'Цей текст чисто для того аби ти розумів, що бот працює. '
+                                    f'Щоб змінити кімнату введи /change_room_code', reply_markup=ReplyKeyboardRemove())
         if user:
-            await self.bot.send_message(user_id,
-                                        f'Ти вже зареєстрований. Обери щось із меню нижче',
-                                        reply_markup=self.home_builder.as_markup())
+            await self.bot.send_message(user_id, f'Ти вже зареєстрований. Введи /change_room_code щоб змінить '
+                                                 f'кімнату або ж просто пиши повідомлення якщо ти вже в кімнаті')
             return
 
         self.database.add_new_user(user_id)
 
     async def home(self, message):
         self.database.changer_user_state('default')
-        await self.bot.send_message(message.chat.id, 'Ти на головній', reply_markup=self.home_builder.as_markup())
+        await self.bot.send_message(message.chat.id, 'Ти на головній')
 
     async def change_room_code(self, message):
         await self.bot.send_message(message.chat.id, 'Введи сюди код кімнати, у якій ти хочеш спілкуватись. '
-                                                     'Назва None, NULL тощо недопустима (пиняй на себе)',
-                                    reply_markup=self.back_builder.as_markup())
+                                                     'Назва None, NULL тощо недопустима (пиняй на себе)')
         self.database.changer_user_state(message.chat.id, 'change_room_code')
 
     async def change_room_code_state(self, message):
         await self.bot.send_message(message.chat.id, f'Тепер ти спілкуєшся у кімнаті з кодом: {message.text}\n'
                                                      f'Тепер просто пиши повідомлення і вони надійдуть усім учасникам '
                                                      f'кімнати. Також ти будеш отримувати відразу всі повідомлення усіх'
-                                                     f'учасників. Приємного спілкування!',
-                                    reply_markup=self.home_builder.as_markup())
+                                                     f'учасників. Приємного спілкування!')
         self.database.changer_user_state(message.chat.id, 'default')
         self.database.changer_user_room_code(message.chat.id, message.text)
+        user_id = message.from_user.id
+        user = self.database.get_user(user_id)
+        users_list = self.database.get_users_by_room_code(user[3])
+        users_list.remove(user)
+        for user_ in users_list:
+            await self.bot.send_message(user_[0], f'||БОТ: у нас нова людина||',
+                                        parse_mode=ParseMode.MARKDOWN_V2)
