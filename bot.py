@@ -152,48 +152,47 @@ class BotConfig:
             elif user[3] in room_code_blacklist:
                 await self.bot.send_message(message.chat.id, f'Чудік, введи нормальний код кімнати')
             elif not user[3] in room_code_blacklist:
+                await self.bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
                 users_list = self.database.get_users_by_room_code(user[3])
                 users_list.remove(user)
+                users_list.append(user)
                 if message.content_type == 'photo':
                     for photo in message.photo:
                         file_id = photo.file_id
                         for user_ in users_list:
-                            await self.bot.send_photo(user_[0], file_id)
+                            await self.bot.send_photo(user_[0], file_id, disable_notification=True)
                 elif message.content_type == 'video':
                     file_id = message.video.file_id
                     for user_ in users_list:
-                        await self.bot.send_video(user_[0], file_id)
+                        await self.bot.send_video(user_[0], file_id, disable_notification=True)
                 elif message.content_type == 'audio':
                     file_id = message.audio.file_id
                     for user_ in users_list:
-                        await self.bot.send_audio(user_[0], file_id)
+                        await self.bot.send_audio(user_[0], file_id, disable_notification=True)
                 elif message.content_type == 'voice':
                     file_id = message.voice.file_id
                     for user_ in users_list:
-                        await self.bot.send_audio(user_[0], file_id)
+                        await self.bot.send_audio(user_[0], file_id, disable_notification=True)
                 elif message.content_type == 'sticker':
                     file_id = message.sticker.file_id
                     for user_ in users_list:
-                        await self.bot.send_sticker(user_[0], file_id)
+                        await self.bot.send_sticker(user_[0], file_id, disable_notification=True)
                 elif message.content_type == 'animation':
                     file_id = message.animation.file_id
                     for user_ in users_list:
-                        await self.bot.send_animation(user_[0], file_id)
+                        await self.bot.send_animation(user_[0], file_id, disable_notification=True)
                 elif message.content_type == 'document':
                     file_id = message.document.file_id
                     for user_ in users_list:
-                        await self.bot.send_document(user_[0], file_id)
+                        await self.bot.send_document(user_[0], file_id, disable_notification=True)
                 elif message.content_type == 'text':
                     for user_ in users_list:
                         await self.bot.send_message(user_[0], f'||Хтось: {escape_markdown(message.text)}||',
-                                                    parse_mode=ParseMode.MARKDOWN_V2)
+                                                    parse_mode=ParseMode.MARKDOWN_V2, disable_notification=True)
                 else:
                     await message.reply('Невідомий тип файлу')
                     await message.reply(f'Тип данних: {message.content_type}')
 
-            await self.bot.set_message_reaction(message.chat.id,
-                                                message.message_id,
-                                                reaction=[{"type": "emoji", "emoji": "👍"}])
         else:
             await self.bot.send_message(message.from_user.id, 'Потрібно пройти реєстрацію. Натисніть /start')
 
