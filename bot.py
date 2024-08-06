@@ -1,3 +1,5 @@
+import asyncio
+
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
@@ -149,30 +151,32 @@ class BotConfig:
                     await admin_action[message.text]()
                 elif user[1] in admin_action:
                     await admin_action[user[1]]()
-            elif user[3] in room_code_blacklist:
-                await self.bot.send_message(message.chat.id, f'Чудік, введи нормальний код кімнати')
-            elif not user[3] in room_code_blacklist:
+            else:
+                if user[3] in room_code_blacklist:
+                    await self.bot.send_message(message.chat.id, f'Чудік, введи нормальний код кімнати, '
+                                                                 f'але поки пущу')
+
+                    await self.bot.send_message(message.chat.id, f'{user[3]}')
                 await self.bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
                 users_list = self.database.get_users_by_room_code(user[3])
                 users_list.remove(user)
                 users_list.append(user)
                 if message.content_type == 'photo':
-                    for photo in message.photo:
-                        file_id = photo.file_id
-                        for user_ in users_list:
-                            await self.bot.send_photo(user_[0], file_id, disable_notification=True)
+                    file_id = message.photo[-1].file_id
+                    for user_ in users_list:
+                        await self.bot.send_photo(user_[0], file_id, caption=f'||{message.caption}||', parse_mode=ParseMode.MARKDOWN_V2, disable_notification=True)
                 elif message.content_type == 'video':
                     file_id = message.video.file_id
                     for user_ in users_list:
-                        await self.bot.send_video(user_[0], file_id, disable_notification=True)
+                        await self.bot.send_video(user_[0], file_id, caption=f'||{message.caption}||', parse_mode=ParseMode.MARKDOWN_V2, disable_notification=True)
                 elif message.content_type == 'audio':
                     file_id = message.audio.file_id
                     for user_ in users_list:
-                        await self.bot.send_audio(user_[0], file_id, disable_notification=True)
+                        await self.bot.send_audio(user_[0], file_id, caption=f'||{message.caption}||', parse_mode=ParseMode.MARKDOWN_V2, disable_notification=True)
                 elif message.content_type == 'voice':
                     file_id = message.voice.file_id
                     for user_ in users_list:
-                        await self.bot.send_audio(user_[0], file_id, disable_notification=True)
+                        await self.bot.send_audio(user_[0], file_id, caption=f'||{message.caption}||', parse_mode=ParseMode.MARKDOWN_V2, disable_notification=True)
                 elif message.content_type == 'sticker':
                     file_id = message.sticker.file_id
                     for user_ in users_list:
@@ -180,11 +184,11 @@ class BotConfig:
                 elif message.content_type == 'animation':
                     file_id = message.animation.file_id
                     for user_ in users_list:
-                        await self.bot.send_animation(user_[0], file_id, disable_notification=True)
+                        await self.bot.send_animation(user_[0], file_id, caption=f'||{message.caption}||', parse_mode=ParseMode.MARKDOWN_V2, disable_notification=True)
                 elif message.content_type == 'document':
                     file_id = message.document.file_id
                     for user_ in users_list:
-                        await self.bot.send_document(user_[0], file_id, disable_notification=True)
+                        await self.bot.send_document(user_[0], file_id, caption=f'||{message.caption}||', parse_mode=ParseMode.MARKDOWN_V2, disable_notification=True)
                 elif message.content_type == 'text':
                     for user_ in users_list:
                         await self.bot.send_message(user_[0], f'||Хтось: {escape_markdown(message.text)}||',
@@ -200,7 +204,8 @@ class BotConfig:
         user_id = message.from_user.id
         user = self.database.get_user(user_id)
         await self.bot.send_message(user_id, f'Цей текст чисто для того аби ти розумів, що бот працює. '
-                                             f'Щоб змінити кімнату введи /change_room_code',
+                                             f'Щоб змінити кімнату введи /change_room_code\n'
+                                             f'Твій телеграм id: {user_id}',
                                     reply_markup=ReplyKeyboardRemove())
         if user:
             await self.bot.send_message(user_id, f'Ти вже зареєстрований. Введи /change_room_code щоб змінить '
